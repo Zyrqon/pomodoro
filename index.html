@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Помидорка — таймер</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍅</text></svg>">
+<style>
+:root{--bg:#0b0f14;--card:#121a23;--line:#1f2b38;--txt:#e7eef7;--dim:#8ba1b8;--work:#ff5d5d;--rest:#3ddc84}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--txt);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px}
+.wrap{width:100%;max-width:380px;text-align:center}
+h1{font-size:20px;font-weight:700;margin-bottom:16px}
+.modes{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+.m{background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:8px 18px;font-size:14px;cursor:pointer;transition:.15s}
+.m.on{color:#fff;border-color:currentColor;font-weight:700}
+.dial{position:relative;width:260px;height:260px;margin:0 auto 20px}
+.dial svg{transform:rotate(-90deg)}
+.dial .bg{stroke:#182533}
+.dial .fg{stroke-linecap:round;transition:stroke .3s}
+.time{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:52px;font-weight:300;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.ctrl{display:flex;gap:10px;justify-content:center;margin-bottom:18px}
+.btn{border:0;border-radius:12px;padding:13px 26px;font-size:15px;font-weight:700;cursor:pointer;transition:.15s;color:#04121f;background:var(--txt)}
+.btn:active{transform:scale(.96)}
+.btn.sec{background:var(--card);color:var(--dim);border:1px solid var(--line)}
+.stats{color:var(--dim);font-size:13px;margin-bottom:14px}
+.sets{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;gap:10px;justify-content:center}
+.sets label{font-size:12px;color:var(--dim);display:flex;flex-direction:column;gap:4px}
+.sets input{width:64px;background:#0a1118;border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:8px;text-align:center;font-size:15px;outline:none}
+footer{margin-top:22px;font-size:12px;color:#3d5068}
+a{color:#3d5068}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Помидорка</h1>
+<div class="modes">
+  <button class="m on" id="m-work" style="color:var(--work)">Работа 25</button>
+  <button class="m" id="m-rest" style="color:var(--rest)">Отдых 5</button>
+  <button class="m" id="m-long" style="color:var(--acc)">Долгий 15</button>
+</div>
+<div class="dial">
+  <svg width="260" height="260">
+    <circle class="bg" cx="130" cy="130" r="118" fill="none" stroke-width="10"/>
+    <circle class="fg" id="fg" cx="130" cy="130" r="118" fill="none" stroke-width="10" stroke="var(--work)"/>
+  </svg>
+  <div class="time" id="time">25:00</div>
+</div>
+<div class="ctrl">
+  <button class="btn" id="start">Старт</button>
+  <button class="btn sec" id="reset">Сброс</button>
+</div>
+<div class="stats" id="stats">помидорок: 0</div>
+<div class="sets">
+  <label>Работа<input type="number" id="sw" value="25" min="1" max="90"></label>
+  <label>Отдых<input type="number" id="sr" value="5" min="1" max="30"></label>
+  <label>Долгий<input type="number" id="sl" value="15" min="1" max="60"></label>
+</div>
+<footer><a href="https://zyrqon.github.io">zyrqon.github.io</a> · считается локально</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const CIRC=2*Math.PI*118;
+$("fg").style.strokeDasharray=CIRC;
+let mode="work",total=25*60,left=total,run=false,tick=null,done=0;
+const col={work:"var(--work)",rest:"var(--rest)",long:"var(--acc)"};
+const mins=()=>({work:+$("sw").value,rest:+$("sr").value,long:+$("sl").value})[mode];
+function paint(){
+  const m=Math.floor(left/60),s=left%60;
+  const t=String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+  $("time").textContent=t;document.title=(run?t+" · ":"")+"Помидорка";
+  $("fg").style.strokeDashoffset=CIRC*(1-left/total);
+  $("start").textContent=run?"Пауза":"Старт";
+}
+function setMode(m){mode=m;left=total=mins()*60;
+  ["work","rest","long"].forEach(k=>$("m-"+k).classList.toggle("on",k==m));
+  $("fg").style.stroke=col[m];paint()}
+function beep(){
+  try{const a=new (window.AudioContext||window.webkitAudioContext)();
+  [0,.25].forEach((d,i)=>{const o=a.createOscillator(),g=a.createGain();
+  o.connect(g);g.connect(a.destination);o.frequency.value=i?880:660;o.type="sine";
+  g.gain.setValueAtTime(.001,a.currentTime+d);
+  g.gain.exponentialRampToValueAtTime(.3,a.currentTime+d+.02);
+  g.gain.exponentialRampToValueAtTime(.001,a.currentTime+d+.2);
+  o.start(a.currentTime+d);o.stop(a.currentTime+d+.22)});
+  }catch(e){}
+}
+function finish(){beep();
+  if(mode=="work"){done++;$("stats").textContent="помидорок: "+done;setMode(done%4==0?"long":"rest")}
+  else setMode("work");
+  run=true;startTick();
+}
+function startTick(){clearInterval(tick);tick=setInterval(()=>{if(left>0){left--;paint()}else{clearInterval(tick);finish()}},1000)}
+$("start").onclick=()=>{run=!run;if(run)startTick();else clearInterval(tick);paint()};
+$("reset").onclick=()=>{clearInterval(tick);run=false;left=total=mins()*60;paint()};
+$("m-work").onclick=()=>setMode("work");
+$("m-rest").onclick=()=>setMode("rest");
+$("m-long").onclick=()=>setMode("long");
+["sw","sr","sl"].forEach(k=>$(k).oninput=()=>{if(!run)setMode(mode)});
+paint();
+</script>
+</body>
+</html>
